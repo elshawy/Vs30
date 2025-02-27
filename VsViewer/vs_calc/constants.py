@@ -11,4 +11,3 @@ class SoilType(Enum):
     Clay = auto()
     Silt = auto()
     Sand = auto()
-    Gravel = auto()
