@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
-from vs30 import model, model_terrain, sites_cluster
+from vs30 import model_3, model_terrain, sites_cluster
 
 terrain_ids = {
     1: ("T01", "T01"),
@@ -31,6 +31,7 @@ vs30_terrain_id_df = vs30_terrain_id_df.loc[vs30_terrain_id_df['tid'] != 255]  #
 
 means = []
 errors = []
+counts = []
 for i, (tid, tid_name) in terrain_ids.items():
     print(tid, tid_name)
     count = vs30_terrain_id_df.loc[vs30_terrain_id_df['tid'] == i].Vs30.count()
@@ -40,6 +41,7 @@ for i, (tid, tid_name) in terrain_ids.items():
 
     means.append(vs30_mean)
     errors.append(vs30_std)
+    counts.append(count)
 
 prior = model_terrain.model_prior()
 prior_means = prior.T[0]
@@ -57,7 +59,7 @@ print(means_minus_1std)
 print(yerr2)
 
 vs30_terrain_id_df = vs30_terrain_id_df.rename(columns={"NZTM_X": "easting", "NZTM_Y": "northing", "Vs30": "vs30"})
-new_posterior = model.posterior(posterior, vs30_terrain_id_df, "tid")
+new_posterior = model_3.posterior(posterior, vs30_terrain_id_df, "tid")
 new_posterior_means = new_posterior.T[0]
 new_posterior_errors = new_posterior.T[1] * new_posterior_means
 upper_new_posterior_errors = new_posterior_errors + new_posterior_means
@@ -70,14 +72,15 @@ yerr = [means_minus_1std2, means_plus_1std2]
 
 median_vs30 = np.median(new_posterior[:, 0])
 
-
 plt.figure(figsize=(7, 6))
-scatter_label = 'Updated Vs30 Data'
+scatter_label = 'Updated Vs30 Data \n (Uncertainty- Purple:0.1, Blue:0.2, Yellow:0.5)'
 for i, (tid, tid_name) in enumerate(terrain_ids.items()):
     subset = vs30_terrain_id_df[vs30_terrain_id_df['tid'] == tid]
     random_offsets = np.random.rand(len(subset)) * 0.5
     x_values = i + random_offsets
-    plt.scatter(x_values, subset['vs30'], color='grey', edgecolor = 'k', alpha=0.6, label=scatter_label if i == 0 else None)
+    colors = subset['uncertainty']  # Assuming 'uncertainty' column exists
+    scatter = plt.scatter(x_values, subset['vs30'], c=colors, cmap='viridis', edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
+    plt.text(i, 1800, str(counts[i]), ha='center', fontsize=10, color='black')
 
 posterior = model_terrain.model_posterior_paper()
 posterior_means = posterior.T[0]
@@ -86,20 +89,17 @@ means_minus_1std = posterior_means * (1 - np.exp(-posterior.T[1]))
 yerr2 = [means_minus_1std, means_plus_1std]
 plt.errorbar(np.arange(len(posterior_means)) - 0.2, posterior_means, yerr=yerr2, fmt='o', capsize=5, label='Median ± 1 std (Foster et al. (2019))', color='blue')
 
-
-
 # Plot the median values for new_posterior
-plt.errorbar(np.arange(len(new_posterior_means))+0.2, new_posterior_means, yerr=yerr, fmt='o', capsize=5, label='Median ± 1 std (Updated Dataset)', color='r')
+plt.errorbar(np.arange(len(new_posterior_means)) + 0.2, new_posterior_means, yerr=yerr, fmt='o', capsize=5, label='Median ± 1 std (Updated Dataset)', color='r')
 posterior = model_terrain.model_prior()
 posterior_means = posterior.T[0]
 
 means_plus_1std = posterior_means * (np.exp(posterior.T[1]) - 1)
 means_minus_1std = posterior_means * (1 - np.exp(-posterior.T[1]))
 yerr2 = [means_minus_1std, means_plus_1std]
-#plt.errorbar(np.arange(len(posterior_means))-0.3, posterior_means, yerr=yerr2, fmt='o', capsize=5, label='Median ± 1 std (Prior)', color='green')
+# plt.errorbar(np.arange(len(posterior_means)) - 0.3, posterior_means, yerr=yerr2, fmt='o', capsize=5, label='Median ± 1 std (Prior)', color='green')
 
-
-#plt.title('Comparison of Mean ±1 std of vs30 grouped by tid')
+# plt.title('Comparison of Mean ±1 std of vs30 grouped by tid')
 plt.xlabel('tid', fontsize=13)
 plt.ylabel(r'$V_{s30} [m/s]$', fontsize=13)
 xtick_labels = ['T01', 'T02', 'T03', 'T04', 'T05', 'T06', 'T07', 'T08', 'T09', 'T10', 'T11', 'T12', 'T13', 'T14', 'T15', 'T16']
@@ -113,6 +113,8 @@ plt.gca().set_yticklabels(['{:.0f}'.format(x) for x in current_values])
 print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
+
+
 plt.tight_layout()
-plt.savefig('Updated_Tid3_test0212.png',dpi=400)
+plt.savefig('Updated_Tid3_test0212.png', dpi=400)
 plt.show()

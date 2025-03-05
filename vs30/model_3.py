@@ -213,7 +213,7 @@ def calculate_n(uncertainty, base_uncertainty=0.1, base_n=1):
     """
     return base_n * (base_uncertainty / uncertainty)
 
-def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5, base_uncertainty=0.1, base_n=1):
+def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5, base_uncertainty=0.1):
     """
     model: prior model
     sites: sites containing vs30 and uncertainty
@@ -239,7 +239,9 @@ def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5, base_uncertainty=0.
             print(f"Invalid index group: {m + 1}")
             continue
         count = len(group)
+        print(count)
         adjusted_count = count * (base_uncertainty / uncertainty)  # Adjusted count based on uncertainty
+        print(adjusted_count)
         var = _new_var(stdv[m], n_prior, uncertainty, group_index, adjusted_count)
         y_mean = group['vs30'].mean()  # Calculate mean vs30
         vs30[m] = _new_mean(vs30[m], n_prior, stdv[m], var, y_mean, group_index, adjusted_count, uncertainty)

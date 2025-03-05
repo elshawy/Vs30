@@ -2,8 +2,8 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
-from Add_NZGDover15_RMDUP0131.bayesian_GID import vs30_geo_id_df
-from vs30 import model, model_geology, sites_cluster
+#from Add_NZGDover15_RMDUP0131.bayesian_GID import vs30_geo_id_df
+from vs30 import model_3, model_geology, sites_cluster
 
 geo_ids = {
     1: ("G01", "Peat"),
@@ -30,10 +30,12 @@ vs30_geo_id_df = df.copy()
 vs30_geo_id_df = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] != 255]  # remove 255 = ID_NODATA
 vs30_geo_id_df = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] != 0]  # remove 0 = Water
 
+
 means = []
 errors = []
-for i, (gid, geo_name) in geo_ids.items():
-    print(gid, geo_name)
+counts = []
+for i, (gid, gid_name) in geo_ids.items():
+    print(gid, gid_name)
     count = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] == i].Vs30.count()
     vs30_mean = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] == i].Vs30.mean()
     vs30_std = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] == i].Vs30.std()
@@ -41,6 +43,7 @@ for i, (gid, geo_name) in geo_ids.items():
 
     means.append(vs30_mean)
     errors.append(vs30_std)
+    counts.append(count)
 
 prior = model_geology.model_prior()
 prior_means = prior.T[0]
@@ -58,7 +61,7 @@ print(means_minus_1std)
 print(yerr2)
 
 vs30_geo_id_df = vs30_geo_id_df.rename(columns={"NZTM_X": "easting", "NZTM_Y": "northing", "Vs30": "vs30"})
-new_posterior = model.posterior(posterior, vs30_geo_id_df, "gid")
+new_posterior = model_3.posterior(posterior, vs30_geo_id_df, "gid")
 new_posterior_means = new_posterior.T[0]
 new_posterior_errors = new_posterior.T[1] * new_posterior_means
 upper_new_posterior_errors = new_posterior_errors + new_posterior_means
@@ -75,12 +78,14 @@ print(upper_new_posterior_errors)
 print(lower_new_posterior_errors)
 
 plt.figure(figsize=(7, 6))
-scatter_label = 'Updated Vs30 Data'
+scatter_label = 'Updated Vs30 Data \n (Uncertainty- Purple:0.1, Blue:0.2, Yellow:0.5)'
 for i, (gid, gid_name) in enumerate(geo_ids.items()):
     subset = vs30_geo_id_df[vs30_geo_id_df['gid'] == gid]
     random_offsets = np.random.rand(len(subset)) * 0.5
     x_values = i + random_offsets
-    plt.scatter(x_values, subset['vs30'], color='grey', edgecolor = 'k', alpha=0.6, label=scatter_label if i == 0 else None)
+    colors = subset['uncertainty']  # Assuming 'uncertainty' column exists
+    scatter = plt.scatter(x_values, subset['vs30'], c=colors, cmap='viridis', edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
+    plt.text(i, 1800, str(counts[i]), ha='center', fontsize=10, color='black')
 
 posterior = model_geology.model_posterior_paper()
 posterior_means = posterior.T[0]
