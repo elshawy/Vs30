@@ -1,6 +1,7 @@
 """
 Shared model functions for processing GIS data and processing/combining models.
 """
+
 from math import exp, log, sqrt
 import os
 
@@ -60,8 +61,8 @@ def combine_models(opts, vs30a, stdva, vs30b, stdvb):
     Combine 2 models.
     """
     if opts.stdv_weight:
-        m_a = (stdva ** 2) ** -opts.k
-        m_b = (stdvb ** 2) ** -opts.k
+        m_a = (stdva**2) ** -opts.k
+        m_b = (stdvb**2) ** -opts.k
         w_a = m_a / (m_a + m_b)
         w_b = m_b / (m_a + m_b)
     else:
@@ -70,8 +71,8 @@ def combine_models(opts, vs30a, stdva, vs30b, stdvb):
 
     log_ab = np.log(vs30a) * w_a + np.log(vs30b) * w_b
     stdv = np.sqrt(
-        w_a * ((np.log(vs30a) - log_ab) ** 2 + stdva ** 2)
-        + w_b * ((np.log(vs30b) - log_ab) ** 2 + stdvb ** 2)
+        w_a * ((np.log(vs30a) - log_ab) ** 2 + stdva**2)
+        + w_b * ((np.log(vs30b) - log_ab) ** 2 + stdvb**2)
     )
 
     return np.exp(log_ab), stdv
@@ -191,98 +192,49 @@ def cluster_update(prior, sites, letter):
 
     return posterior
 
-def _new_mean(mu_0, n0, sigma_0, y, sigma_y, count, group_index):
-    """
-    Calculates the new mean using Bayesian update for log-normal distribution.
 
-    Parameters:
-    mu_0 (float): Initial mean (prior mean)
-    n0 (int): Initial count (prior sample size)
-    sigma_0 (float): Initial standard deviation (prior standard deviation)
-    y (float): New data point
-    sigma_y (float): Standard deviation of the new data point
-    count (int): Calculation count
-    group_index (int): Group index
+def _new_mean(mu_0, n0, sigma_0, var, y_mean, group_index, count, uncertainty):
+    mean = exp((n0 / (sigma_0 * sigma_0) * log(mu_0) + log(y_mean) * count / var) / (n0 / (sigma_0 * sigma_0) + count / var))
+    print(f"Group {group_index} - uncertainty {uncertainty}")
+    print(f"mu_0: {mu_0}, n0: {n0}, sigma_0: {sigma_0}, var: {var}, y_mean: {y_mean}")
+    print(f"New mean: {mean}")
+    return mean
 
-    Returns:
-    float: Updated mean
-    """
-    log_mu_0 = log(mu_0)
-    log_y = log(y)
-    var = ((n0 * sigma_0 ** 2) + sigma_y ** 2) / (n0 + 1)
-    mean = exp((n0 * log_mu_0 / sigma_0 ** 2 + log_y / sigma_y ** 2) / (n0 / sigma_0 ** 2 + 1 / sigma_y ** 2))
-
-    if group_index == 5:
-        print(f"5th Group Calculation - New Mean:")
-        print(f"log(mu_0): {log_mu_0}, log(y): {log_y}")
-        print(f"Numerator: {n0 * log_mu_0 / sigma_0 ** 2 + log_y / sigma_y ** 2}")
-        print(f"Denominator: {n0 / sigma_0 ** 2 + 1 / sigma_y ** 2}")
-        print(f"New mean: {mean}, New variance: {var}")
-
-    return mean, var
-
-def _new_var(sigma_0, n0, sigma_y, count, group_index):
-    """
-    Calculates the new variance using Bayesian update for log-normal distribution.
-
-    Parameters:
-    sigma_0 (float): Initial standard deviation (prior standard deviation)
-    n0 (int): Initial count (prior sample size)
-    sigma_y (float): Standard deviation of the new data point
-    count (int): Calculation count
-    group_index (int): Group index
-
-    Returns:
-    float: Updated variance
-    """
-    var = ((n0 * sigma_0 ** 2) + sigma_y ** 2) / (n0 + 1)
-
-    if group_index == 5:
-        print(f"5th Group Calculation - New Variance:")
-        print(f"sigma_0: {sigma_0}, n0: {n0}, sigma_y: {sigma_y}")
-        print(f"New variance: {var}")
-
+def _new_var(sigma_0, n0, uncertainty, group_index, count):
+    var = 1 / (n0 / (sigma_0 * sigma_0) + count / (uncertainty * uncertainty))
+    print(f"Group {group_index} - uncertainty {uncertainty}")
+    print(f"sigma_0: {sigma_0}, n0: {n0}, uncertainty: {uncertainty}")
+    print(f"New variance: {var}")
     return var
 
 def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
     """
-    Performs Bayesian update for each group in the sites data.
-
-    Parameters:
-    model (ndarray): Prior model with mean and standard deviation
-    sites (DataFrame): DataFrame containing new data points
-    idcol (str): Column name in sites DataFrame that contains group IDs
-    n_prior (int): Initial count (prior sample size)
-    min_sigma (float): Minimum allowed standard deviation
-
-    Returns:
-    ndarray: Updated model with new mean and standard deviation for each group
+    model: prior model
+    sites: sites containing vs30 and uncertainty
+    idcol: model ID column in sites
+    n_prior: assume prior model made up of n_prior measurements
+    min_sigma: minimum model_stdv allowed
     """
+
+    # new model
     vs30 = model[:, 0]
     stdv = np.maximum(model[:, 1], min_sigma)
 
+    # loop through observed
     n0 = np.repeat(n_prior, len(model))
+    grouped_sites = sites.groupby([idcol, 'uncertainty'])
 
-    groups = sites.groupby(idcol)
-    count = 0
-    group_index = 0
-
-    for m, group in groups:
-        if m == 255 or m == 0:
+    for group_index, ((m, uncertainty), group) in enumerate(grouped_sites):
+        if m == ID_NODATA or m == 0:
             continue
         m -= 1
-        group_index += 1
-
-        for _, row in group.iterrows():
-            count += 1
-            var = _new_var(stdv[m], n0[m], row['uncertainty'], count, group_index)
-
-            try:
-                vs30[m], var = _new_mean(vs30[m], n0[m], stdv[m], row['vs30'], row['uncertainty'], count, group_index)
-            except ValueError as e:
-                vs30[m] = np.nan
-
-            stdv[m] = sqrt(var)
-            n0[m] += 1
+        if m < 0 or m >= len(model):
+            print(f"Invalid index group: {m + 1}")
+            continue
+        count = len(group)
+        var = _new_var(stdv[m], n0[m], uncertainty, group_index, count)
+        y_mean = group['vs30'].mean()  # Calculate mean vs30
+        vs30[m] = _new_mean(vs30[m], n0[m], stdv[m], var, y_mean, group_index, count, uncertainty)
+        stdv[m] = sqrt(var)
 
     return np.column_stack((vs30, stdv))
