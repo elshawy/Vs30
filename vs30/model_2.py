@@ -207,13 +207,21 @@ def _new_var(sigma_0, n0, uncertainty, group_index, count):
     print(f"New variance: {var}")
     return var
 
-def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
+def calculate_n0(uncertainty, base_uncertainty=0.1, base_n=1):
+    """
+    Calculate n0 based on the uncertainty value.
+    """
+    return base_n * (base_uncertainty / uncertainty)
+
+def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5, base_uncertainty=0.1, base_n=1):
     """
     model: prior model
     sites: sites containing vs30 and uncertainty
     idcol: model ID column in sites
     n_prior: assume prior model made up of n_prior measurements
     min_sigma: minimum model_stdv allowed
+    base_uncertainty: the uncertainty value at which n_prior is defined
+    base_n: the n value at base_uncertainty
     """
 
     # new model
@@ -221,7 +229,6 @@ def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
     stdv = np.maximum(model[:, 1], min_sigma)
 
     # loop through observed
-    n0 = np.repeat(n_prior, len(model))
     grouped_sites = sites.groupby([idcol, 'uncertainty'])
 
     for group_index, ((m, uncertainty), group) in enumerate(grouped_sites):
@@ -232,9 +239,10 @@ def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
             print(f"Invalid index group: {m + 1}")
             continue
         count = len(group)
-        var = _new_var(stdv[m], n0[m], uncertainty, group_index, count)
+        adjusted_n0 = calculate_n0(uncertainty, base_uncertainty, base_n)
+        var = _new_var(stdv[m], adjusted_n0, uncertainty, group_index, count)
         y_mean = group['vs30'].mean()  # Calculate mean vs30
-        vs30[m] = _new_mean(vs30[m], n0[m], stdv[m], var, y_mean, group_index, count, uncertainty)
+        vs30[m] = _new_mean(vs30[m], adjusted_n0, stdv[m], var, y_mean, group_index, count, uncertainty)
         stdv[m] = sqrt(var)
 
     return np.column_stack((vs30, stdv))
