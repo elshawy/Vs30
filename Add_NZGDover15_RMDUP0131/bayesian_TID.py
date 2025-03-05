@@ -103,4 +103,5 @@ print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 plt.tight_layout()
+plt.savefig('Updated_TID.png',dpi=400)
 plt.show()
