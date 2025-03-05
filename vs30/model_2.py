@@ -239,10 +239,10 @@ def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5, base_uncertainty=0.
             print(f"Invalid index group: {m + 1}")
             continue
         count = len(group)
-        adjusted_n0 = calculate_n0(uncertainty, base_uncertainty, base_n)
-        var = _new_var(stdv[m], adjusted_n0, uncertainty, group_index, count)
+        adjusted_count = count * (base_uncertainty / uncertainty)  # Adjusted count based on uncertainty
+        var = _new_var(stdv[m], n_prior, uncertainty, group_index, adjusted_count)
         y_mean = group['vs30'].mean()  # Calculate mean vs30
-        vs30[m] = _new_mean(vs30[m], adjusted_n0, stdv[m], var, y_mean, group_index, count, uncertainty)
+        vs30[m] = _new_mean(vs30[m], n_prior, stdv[m], var, y_mean, group_index, adjusted_count, uncertainty)
         stdv[m] = sqrt(var)
 
     return np.column_stack((vs30, stdv))
