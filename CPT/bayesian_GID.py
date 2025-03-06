@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 #from Add_NZGDover15_RMDUP0131.bayesian_GID import vs30_geo_id_df
-from vs30 import model_3, model_geology, sites_cluster
+from vs30 import model, model_geology, sites_cluster
 
 geo_ids = {
     1: ("G01", "Peat"),
@@ -23,7 +23,7 @@ geo_ids = {
     15: ("G18", "Crystalline rocks"),
 }
 
-df = pd.read_csv('measured_sites.csv')
+df = pd.read_csv('measured_sites_CPT.csv')
 print(df)
 
 vs30_geo_id_df = df.copy()
@@ -61,7 +61,7 @@ print(means_minus_1std)
 print(yerr2)
 
 vs30_geo_id_df = vs30_geo_id_df.rename(columns={"NZTM_X": "easting", "NZTM_Y": "northing", "Vs30": "vs30"})
-new_posterior = model_3.posterior(posterior, vs30_geo_id_df, "gid")
+new_posterior = model.posterior(posterior, vs30_geo_id_df, "gid")
 new_posterior_means = new_posterior.T[0]
 new_posterior_errors = new_posterior.T[1] * new_posterior_means
 upper_new_posterior_errors = new_posterior_errors + new_posterior_means
@@ -81,11 +81,21 @@ plt.figure(figsize=(7, 6))
 scatter_label = 'Updated Vs30 Data \n (Uncertainty- Purple:0.1, Blue:0.2, Yellow:0.5)'
 for i, (gid, gid_name) in enumerate(geo_ids.items()):
     subset = vs30_geo_id_df[vs30_geo_id_df['gid'] == gid]
-    random_offsets = np.random.rand(len(subset)) * 0.5
+    random_offsets = np.random.rand(len(subset)) * 0.3
     x_values = i + random_offsets
     colors = subset['uncertainty']  # Assuming 'uncertainty' column exists
-    scatter = plt.scatter(x_values, subset['vs30'], c=colors, cmap='viridis', edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
-    plt.text(i, 1800, str(counts[i]), ha='center', fontsize=10, color='black')
+
+    # Plot q == 5 first
+    subset_q5 = subset[subset['q'] == 5]
+    x_values_q5 = x_values[subset['q'] == 5]
+    scatter_q5 = plt.scatter(x_values_q5, subset_q5['vs30'], c=subset_q5['uncertainty'], s=1, cmap='viridis', edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
+
+    # Plot q != 5
+    subset_not_q5 = subset[subset['q'] != 5]
+    x_values_not_q5 = x_values[subset['q'] != 5]
+    scatter_not_q5 = plt.scatter(x_values_not_q5, subset_not_q5['vs30'], c=subset_not_q5['uncertainty'], s=50, cmap='viridis', edgecolor='k', alpha=0.6)
+
+    #plt.text(i, 1800, str(counts[i]), ha='center', fontsize=10, color='black')
 
 posterior = model_geology.model_posterior_paper()
 posterior_means = posterior.T[0]
@@ -123,5 +133,5 @@ print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 plt.tight_layout()
-plt.savefig('Updated_Gid3_test00111111123123.png',dpi=400)
+plt.savefig('Updated_Gid3_CPT.png',dpi=400)
 plt.show()

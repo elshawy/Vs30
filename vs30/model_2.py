@@ -1,7 +1,6 @@
 """
 Shared model functions for processing GIS data and processing/combining models.
 """
-
 from math import exp, log, sqrt
 import os
 
@@ -61,8 +60,8 @@ def combine_models(opts, vs30a, stdva, vs30b, stdvb):
     Combine 2 models.
     """
     if opts.stdv_weight:
-        m_a = (stdva**2) ** -opts.k
-        m_b = (stdvb**2) ** -opts.k
+        m_a = (stdva ** 2) ** -opts.k
+        m_b = (stdvb ** 2) ** -opts.k
         w_a = m_a / (m_a + m_b)
         w_b = m_b / (m_a + m_b)
     else:
@@ -71,8 +70,8 @@ def combine_models(opts, vs30a, stdva, vs30b, stdvb):
 
     log_ab = np.log(vs30a) * w_a + np.log(vs30b) * w_b
     stdv = np.sqrt(
-        w_a * ((np.log(vs30a) - log_ab) ** 2 + stdva**2)
-        + w_b * ((np.log(vs30b) - log_ab) ** 2 + stdvb**2)
+        w_a * ((np.log(vs30a) - log_ab) ** 2 + stdva ** 2)
+        + w_b * ((np.log(vs30b) - log_ab) ** 2 + stdvb ** 2)
     )
 
     return np.exp(log_ab), stdv
@@ -193,35 +192,26 @@ def cluster_update(prior, sites, letter):
     return posterior
 
 
-def _new_mean(mu_0, n0, sigma_0, var, y_mean, group_index, count, uncertainty):
-    mean = exp((n0 / (sigma_0 * sigma_0) * log(mu_0) + log(y_mean) * count / var) / (n0 / (sigma_0 * sigma_0) + count / var))
-    print(f"Group {group_index} - uncertainty {uncertainty}")
-    print(f"mu_0: {mu_0}, n0: {n0}, sigma_0: {sigma_0}, var: {var}, y_mean: {y_mean}")
-    print(f"New mean: {mean}")
-    return mean
+def _new_mean(mu_0, n0, sigma_0, var, y, n):
+    numerator = n0 / (sigma_0**2) * log(mu_0) + n / var * log(y)
+    denominator = n0 / (sigma_0**2) + n / var
+    result = exp(numerator / denominator)
+    print(f"_new_mean calculation: numerator={numerator}, denominator={denominator}, result={result}, n0={n0}")
+    return result
 
-def _new_var(sigma_0, n0, uncertainty, group_index, count):
-    var = 1 / (n0 / (sigma_0 * sigma_0) + count / (uncertainty * uncertainty))
-    print(f"Group {group_index} - uncertainty {uncertainty}")
-    print(f"sigma_0: {sigma_0}, n0: {n0}, uncertainty: {uncertainty}")
-    print(f"New variance: {var}")
-    return var
+def _new_var(sigma_0, n0, uncertainty, n):
+    result = (n0 * sigma_0 * sigma_0 + uncertainty * uncertainty) / (n0 +  n)
+    print(f"_new_var calculation: result={result}")
+    return result
 
-def calculate_n(uncertainty, base_uncertainty=0.1, base_n=1):
-    """
-    Calculate n0 based on the uncertainty value.
-    """
-    return base_n * (base_uncertainty / uncertainty)
 
-def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5, base_uncertainty=0.1, base_n=1):
+def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
     """
     model: prior model
     sites: sites containing vs30 and uncertainty
     idcol: model ID column in sites
     n_prior: assume prior model made up of n_prior measurements
     min_sigma: minimum model_stdv allowed
-    base_uncertainty: the uncertainty value at which n_prior is defined
-    base_n: the n value at base_uncertainty
     """
 
     # new model
@@ -229,20 +219,17 @@ def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5, base_uncertainty=0.
     stdv = np.maximum(model[:, 1], min_sigma)
 
     # loop through observed
-    grouped_sites = sites.groupby([idcol, 'uncertainty'])
-
-    for group_index, ((m, uncertainty), group) in enumerate(grouped_sites):
+    n0 = np.repeat(n_prior, len(model)).astype(float)
+    for _, r in sites.iterrows():
+        m = r[idcol] # m 0...15
         if m == ID_NODATA or m == 0:
             continue
-        m -= 1
-        if m < 0 or m >= len(model):
-            print(f"Invalid index group: {m + 1}")
-            continue
-        count = len(group)
-        adjusted_count = count * (base_uncertainty / uncertainty)  # Adjusted count based on uncertainty
-        var = _new_var(stdv[m], n_prior, uncertainty, group_index, adjusted_count)
-        y_mean = group['vs30'].mean()  # Calculate mean vs30
-        vs30[m] = _new_mean(vs30[m], n_prior, stdv[m], var, y_mean, group_index, adjusted_count, uncertainty)
+        m -= 1 # geology stdv, n0, vs30 are of size 15 (max index 14)
+        print(r.q)
+        n = 0.2 if r.q == 5 else 1
+        var = _new_var(stdv[m], n0[m], r.uncertainty, n)
+        vs30[m] = _new_mean(vs30[m], n0[m], stdv[m], var, r.vs30, n)
         stdv[m] = sqrt(var)
+        n0[m] += 0.2 if r.q == 5 else 1
 
     return np.column_stack((vs30, stdv))
