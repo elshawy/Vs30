@@ -192,12 +192,17 @@ def cluster_update(prior, sites, letter):
     return posterior
 
 
-def _new_mean(mu_0, n0, var, y):
-    return exp((n0 / var * log(mu_0) + log(y) / var) / (n0 / var + 1 / var))
+def _new_mean(mu_0, n0, sigma_0, var, y, n):
+    numerator = (n0 / var * log(mu_0) + log(y)*n / var)
+    denominator = (n0 / var + n / var)
+    result = exp(numerator / denominator)
+    print(f"_new_mean calculation: numerator={numerator}, denominator={denominator}, result={result}, n0={n0}")
+    return result
 
-
-def _new_var(sigma_0, n0, uncertainty):
-    return (n0 * sigma_0 * sigma_0 + uncertainty * uncertainty) / (n0 + 1)
+def _new_var(sigma_0, n0, uncertainty, n):
+    result = (n0 * sigma_0 * sigma_0 + uncertainty * uncertainty) / (n0 +  n)
+    print(f"_new_var calculation: result={result}")
+    return result
 
 
 def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
@@ -214,15 +219,17 @@ def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
     stdv = np.maximum(model[:, 1], min_sigma)
 
     # loop through observed
-    n0 = np.repeat(n_prior, len(model))
+    n0 = np.repeat(n_prior, len(model)).astype(float)
     for _, r in sites.iterrows():
         m = r[idcol] # m 0...15
         if m == ID_NODATA or m == 0:
             continue
-        m-=1 # geology stdv, n0, vs30 are of size 15 (max index 14)
-        var = _new_var(stdv[m], n0[m], r.uncertainty)
-        vs30[m] = _new_mean(vs30[m], n0[m], var, r.vs30)
+        m -= 1 # geology stdv, n0, vs30 are of size 15 (max index 14)
+        #print(r.q)
+        n = 0.1 if r.q == 5 else 1
+        var = _new_var(stdv[m], n0[m], r.uncertainty, n)
+        vs30[m] = _new_mean(vs30[m], n0[m], stdv[m], var, r.vs30, n)
         stdv[m] = sqrt(var)
-        n0[m] += 1
+        n0[m] += 0.1 if r.q == 5 else 1
 
     return np.column_stack((vs30, stdv))

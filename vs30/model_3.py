@@ -192,56 +192,67 @@ def cluster_update(prior, sites, letter):
     return posterior
 
 
-def _new_mean(mu_0, n0, sigma_0, var, y, n):
-    numerator = n0 / (sigma_0**2) * log(mu_0) + n / var * log(y)
-    denominator = n0 / (sigma_0**2) + n / var
-    result = exp(numerator / denominator)
-    print(f"_new_mean calculation: numerator={numerator}, denominator={denominator}, result={result}, n0={n0}")
+def print_calculation(step, term, current_value):
+    print(f"{step}: Adding {term} to {step}, current {step}={current_value}")
+
+def _new_var(sigma_0, n0, W, uncertainties, n, index):
+    numerator = (n0 * sigma_0 ** 2)
+    for i in range(1, n + 1):
+        term = W.iloc[i - 1] * (uncertainties.iloc[i - 1]) ** 2
+        numerator += term
+        if index == 13:
+            print_calculation("numerator", term, numerator)
+
+    denominator = n0
+    for i in range(1, n + 1):
+        term = W.iloc[i - 1]
+        denominator += term
+        if index == 13:
+            print_calculation("denominator", term, denominator)
+
+    log_result = numerator / denominator
+    result = np.exp(log_result) if log_result < 709 else float('inf')
+    if index == 13:
+        print(f"_new_var calculation: log_result={log_result}, result={result}")
     return result
 
-def _new_var(sigma_0, n0, uncertainty, n):
-    result = (n0 * sigma_0 * sigma_0 + uncertainty * uncertainty) / (n0 +  n)
-    print(f"_new_var calculation: result={result}")
-    return result
+def _new_mean(mu_0, n0, var, W, vs30_values, n, index):
+    numerator = (n0 * log(mu_0) / var)
+    for i in range(1, n + 1):
+        term = W.iloc[i - 1] * vs30_values.iloc[i - 1]
+        numerator += term / var
+        if index == 13:
+            print_calculation("numerator", term / var, numerator)
+    denominator = (n0 / var)
+    for i in range(1, n + 1):
+        term = W.iloc[i - 1]
+        denominator += term / var
+        if index == 13:
+            print_calculation("denominator", term / var, denominator)
 
-def _new_var_2(no, sigma_0, Wi, Si, N, n0):
-    result = ((no * sigma_0**2) + sum(Wi * Si**2 for i in range(1, N+1))) / n0 + sum(Wi for i in range(1, N+1))
-    print(f"_new_var_2 calculation: result={result}")
-    return result
-
-def _new_mean_2(n0, mu_0, var, Wi, y, N):
-    numerator = (n0 * log(mu_0) / var) + (sum(Wi * y for i in range(1, N+1)) / var)
-    denominator = (n0 / var) + (sum(Wi for i in range(1, N+1)) / var)
     result = numerator / denominator
-    print(f"_new_mean_2 calculation: numerator={numerator}, denominator={denominator}, result={result}")
+    if index == 13:
+        print(f"_new_mean calculation: numerator={numerator}, denominator={denominator}, result={result}")
     return result
-
 
 def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
-    """
-    model: prior model
-    sites: sites containing vs30 and uncertainty
-    idcol: model ID column in sites
-    n_prior: assume prior model made up of n_prior measurements
-    min_sigma: minimum model_stdv allowed
-    """
-
-    # new model
     vs30 = model[:, 0]
     stdv = np.maximum(model[:, 1], min_sigma)
 
-    # loop through observed
     n0 = np.repeat(n_prior, len(model)).astype(float)
-    for _, r in sites.iterrows():
-        m = r[idcol] # m 0...15
+    for m in range(len(model)):
         if m == ID_NODATA or m == 0:
             continue
-        m -= 1 # geology stdv, n0, vs30 are of size 15 (max index 14)
-        print(r.q)
-        n = 0.2 if r.q == 5 else 1
-        var = _new_var(stdv[m], n0[m], r.uncertainty, n)
-        vs30[m] = _new_mean(vs30[m], n0[m], stdv[m], var, r.vs30, n)
+        group = sites[sites[idcol] == m + 1]
+        if group.empty:
+            continue
+        group.loc[:, 'W'] = group['q'].apply(lambda x: 0.1 if x == 5 else 1)
+        print(f"Group weights (W): {group['W'].values}")
+
+        n = len(group)
+        var = _new_var(stdv[m], n0[m], group['W'], group['uncertainty'], n, m)
+        vs30[m] = _new_mean(vs30[m], n0[m], var, group['W'], group['vs30'], n, m)
         stdv[m] = sqrt(var)
-        n0[m] += 0.2 if r.q == 5 else 1
+        n0[m] += group['W'].sum()
 
     return np.column_stack((vs30, stdv))

@@ -129,5 +129,5 @@ plt.grid(True)  # Add grid lines
 
 
 plt.tight_layout()
-plt.savefig('Updated_Tid3_Foster.png', dpi=400)
+plt.savefig('Updated_Tid3_CPT01.png', dpi=400)
 plt.show()

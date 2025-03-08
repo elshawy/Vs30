@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 #from Add_NZGDover15_RMDUP0131.bayesian_GID import vs30_geo_id_df
-from vs30 import model, model_geology, sites_cluster
+from vs30 import model_3, model_geology, sites_cluster
 
 geo_ids = {
     1: ("G01", "Peat"),
@@ -61,7 +61,7 @@ print(means_minus_1std)
 print(yerr2)
 
 vs30_geo_id_df = vs30_geo_id_df.rename(columns={"NZTM_X": "easting", "NZTM_Y": "northing", "Vs30": "vs30"})
-new_posterior = model.posterior(posterior, vs30_geo_id_df, "gid")
+new_posterior = model_3.posterior(posterior, vs30_geo_id_df, "gid")
 new_posterior_means = new_posterior.T[0]
 new_posterior_errors = new_posterior.T[1] * new_posterior_means
 upper_new_posterior_errors = new_posterior_errors + new_posterior_means
@@ -133,5 +133,5 @@ print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 plt.tight_layout()
-plt.savefig('Updated_Gid3_CPT.png',dpi=400)
+plt.savefig('Updated_Gid3_incCPT05asd.png',dpi=400)
 plt.show()
