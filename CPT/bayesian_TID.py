@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
-from vs30 import model, model_terrain, sites_cluster
+from vs30 import model_3, model_terrain, sites_cluster
 
 terrain_ids = {
     1: ("T01", "T01"),
@@ -59,7 +59,7 @@ print(means_minus_1std)
 print(yerr2)
 
 vs30_terrain_id_df = vs30_terrain_id_df.rename(columns={"NZTM_X": "easting", "NZTM_Y": "northing", "Vs30": "vs30"})
-new_posterior = model.posterior(posterior, vs30_terrain_id_df, "tid")
+new_posterior = model_3.posterior(posterior, vs30_terrain_id_df, "tid")
 new_posterior_means = new_posterior.T[0]
 new_posterior_errors = new_posterior.T[1] * new_posterior_means
 upper_new_posterior_errors = new_posterior_errors + new_posterior_means
@@ -129,5 +129,5 @@ plt.grid(True)  # Add grid lines
 
 
 plt.tight_layout()
-plt.savefig('Updated_Tid3_CPT01.png', dpi=400)
+plt.savefig('Updated_Tid3_2ndCPT05.png', dpi=400)
 plt.show()

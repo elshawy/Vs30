@@ -121,7 +121,7 @@ yerr2 = [means_minus_1std, means_plus_1std]
 plt.xlabel('gid', fontsize=13)
 plt.ylabel(r'$V_{s30} [m/s]$', fontsize=13)
 xtick_labels = ['G01', 'G04', 'G05', 'G06', 'G08', 'G09', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'G16', 'G17', 'G18']
-
+print(np.exp(6.3))
 plt.xticks(ticks=np.arange(len(new_posterior_means))+0.2, labels=xtick_labels, fontsize=13, rotation=45)  # Rotate x-ticks by 90 degrees
 plt.legend()
 plt.yscale('log')
@@ -133,5 +133,5 @@ print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 plt.tight_layout()
-plt.savefig('Updated_Gid3_incCPT05asd.png',dpi=400)
+plt.savefig('Updated_Gid3_2ndCPT01.png',dpi=400)
 plt.show()
