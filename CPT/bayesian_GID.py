@@ -133,5 +133,5 @@ print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 plt.tight_layout()
-plt.savefig('Updated_Gid3_2ndCPT01.png',dpi=400)
+plt.savefig('Updated_Gid3_2ndCPT005.png',dpi=400)
 plt.show()
