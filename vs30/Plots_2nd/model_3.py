@@ -200,20 +200,17 @@ def _new_var(sigma_0, n0, W, uncertainties, n, index):
     for i in range(1, n + 1):
         term = W.iloc[i - 1] * (uncertainties.iloc[i - 1]) ** 2
         numerator += term
-        if index == 13:
-            print_calculation("numerator", term, numerator)
+        print_calculation("numerator", term, numerator)
 
     denominator = n0
     for i in range(1, n + 1):
         term = W.iloc[i - 1]
         denominator += term
-        if index == 13:
-            print_calculation("denominator", term, denominator)
+        print_calculation("denominator", term, denominator)
 
     log_result = numerator / denominator
     result = log_result
-    if index == 13:
-        print(f"_new_var calculation: log_result={log_result}, result={result}")
+    print(f"_new_var calculation: log_result={log_result}, result={result}")
     return result
 
 def _new_mean(mu_0, n0, var, W, vs30_values, n, index):
@@ -221,18 +218,15 @@ def _new_mean(mu_0, n0, var, W, vs30_values, n, index):
     for i in range(1, n + 1):
         term = W.iloc[i - 1] * log(vs30_values.iloc[i - 1])
         numerator += term / var
-        if index == 13:
-            print_calculation("numerator", term / var, numerator)
+        print_calculation("numerator", term / var, numerator)
     denominator = (n0 / var)
     for i in range(1, n + 1):
         term = W.iloc[i - 1]
         denominator += term / var
-        if index == 13:
-            print_calculation("denominator", term / var, denominator)
+        print_calculation("denominator", term / var, denominator)
 
     result = exp(numerator / denominator)
-    if index == 13:
-        print(f"_new_mean calculation: numerator={numerator}, denominator={denominator}, result={result}")
+    print(f"_new_mean calculation: numerator={numerator}, denominator={denominator}, result={result}")
     return result
 
 def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
