@@ -23,7 +23,7 @@ geo_ids = {
     15: ("G18", "Crystalline rocks"),
 }
 
-df = pd.read_csv('measured_sites_CPT.csv')
+df = pd.read_csv('measured_sites.csv')
 print(df)
 
 vs30_geo_id_df = df.copy()
@@ -63,40 +63,36 @@ print(yerr2)
 vs30_geo_id_df = vs30_geo_id_df.rename(columns={"NZTM_X": "easting", "NZTM_Y": "northing", "Vs30": "vs30"})
 new_posterior = model_3.posterior(posterior, vs30_geo_id_df, "gid")
 new_posterior_means = new_posterior.T[0]
-new_posterior_errors = new_posterior.T[1] * new_posterior_means
-upper_new_posterior_errors = new_posterior_errors + new_posterior_means
-lower_new_posterior_errors = new_posterior_means - new_posterior_errors
-
-# Correctly calculate the error bars
-means_plus_1std2 = new_posterior_means * (np.exp(new_posterior.T[1]) - 1)
-means_minus_1std2 = new_posterior_means * (1 - np.exp(-new_posterior.T[1]))
-yerr = [means_minus_1std2, means_plus_1std2]
+means_plus_1std_new = new_posterior_means * (np.exp(new_posterior.T[1]) - 1)
+means_minus_1std_new = new_posterior_means * (1 - np.exp(-new_posterior.T[1]))
+yerr = [means_minus_1std_new, means_plus_1std_new]
 
 median_vs30 = np.median(new_posterior[:, 0])
-print(new_posterior_means)
-print(upper_new_posterior_errors)
-print(lower_new_posterior_errors)
+
 
 plt.figure(figsize=(7, 6))
 scatter_label = 'Updated Vs30 Data \n (Uncertainty- Purple:0.1, Blue:0.2, Yellow:0.5)'
+color_map = {0.1: 'purple', 0.2: 'blue', 0.5: 'yellow'}
+
 for i, (gid, gid_name) in enumerate(geo_ids.items()):
     subset = vs30_geo_id_df[vs30_geo_id_df['gid'] == gid]
     random_offsets = np.random.rand(len(subset)) * 0.3
     x_values = i + random_offsets
-    colors = subset['uncertainty']  # Assuming 'uncertainty' column exists
+
+    # Map uncertainty values to colors
+    colors = subset['uncertainty'].map(color_map)
 
     # Plot q == 5 first
     subset_q5 = subset[subset['q'] == 5]
     x_values_q5 = x_values[subset['q'] == 5]
-    scatter_q5 = plt.scatter(x_values_q5, subset_q5['vs30'], c=subset_q5['uncertainty'], s=1, cmap='viridis', edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
+    scatter_q5 = plt.scatter(x_values_q5, subset_q5['vs30'], c=colors[subset['q'] == 5], s=1, edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
 
     # Plot q != 5
     subset_not_q5 = subset[subset['q'] != 5]
     x_values_not_q5 = x_values[subset['q'] != 5]
-    scatter_not_q5 = plt.scatter(x_values_not_q5, subset_not_q5['vs30'], c=subset_not_q5['uncertainty'], s=50, cmap='viridis', edgecolor='k', alpha=0.6)
+    scatter_not_q5 = plt.scatter(x_values_not_q5, subset_not_q5['vs30'], c=colors[subset['q'] != 5], s=50, edgecolor='k', alpha=0.6)
 
     #plt.text(i, 1800, str(counts[i]), ha='center', fontsize=10, color='black')
-
 posterior = model_geology.model_posterior_paper()
 posterior_means = posterior.T[0]
 means_plus_1std = posterior_means * (np.exp(posterior.T[1]) - 1)
@@ -133,5 +129,5 @@ print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 plt.tight_layout()
-plt.savefig('Updated_Gid3_2ndCPT005.png',dpi=400)
+plt.savefig('Updated_Gid3_2nd_2.png',dpi=400)
 plt.show()

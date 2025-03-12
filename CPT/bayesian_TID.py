@@ -23,7 +23,7 @@ terrain_ids = {
     16: ("T16", "T16"),
 }
 
-df = pd.read_csv('measured_sites_CPT.csv')
+df = pd.read_csv('measured_sites.csv')
 print(df)
 
 vs30_terrain_id_df = df.copy()
@@ -75,24 +75,25 @@ median_vs30 = np.median(new_posterior[:, 0])
 plt.figure(figsize=(7, 6))
 scatter_label = 'Updated Vs30 Data \n (Uncertainty- Purple:0.1, Blue:0.2, Yellow:0.5)'
 
+color_map = {0.1: 'purple', 0.2: 'blue', 0.5: 'yellow'}
+
 for i, (tid, tid_name) in enumerate(terrain_ids.items()):
     subset = vs30_terrain_id_df[vs30_terrain_id_df['tid'] == tid]
     random_offsets = np.random.rand(len(subset)) * 0.5
     x_values = i + random_offsets
-    colors = subset['uncertainty']  # Assuming 'uncertainty' column exists
+
+    # Map uncertainty values to colors
+    colors = subset['uncertainty'].map(color_map)
 
     # Plot q == 5 first
     subset_q5 = subset[subset['q'] == 5]
     x_values_q5 = x_values[subset['q'] == 5]
-    scatter_q5 = plt.scatter(x_values_q5, subset_q5['vs30'], c=subset_q5['uncertainty'], s=1, cmap='viridis', edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
+    scatter_q5 = plt.scatter(x_values_q5, subset_q5['vs30'], c=colors[subset['q'] == 5], s=1, edgecolor='k', alpha=0.6, label=scatter_label if i == 0 else None)
 
     # Plot q != 5
     subset_not_q5 = subset[subset['q'] != 5]
     x_values_not_q5 = x_values[subset['q'] != 5]
-    scatter_not_q5 = plt.scatter(x_values_not_q5, subset_not_q5['vs30'], c=subset_not_q5['uncertainty'], s=50, cmap='viridis', edgecolor='k', alpha=0.6)
-
-    plt.text(i, 1800, str(counts[i]), ha='center', fontsize=10, color='black')
-
+    scatter_not_q5 = plt.scatter(x_values_not_q5, subset_not_q5['vs30'], c=colors[subset['q'] != 5], s=50, edgecolor='k', alpha=0.6)
 
 
 posterior = model_terrain.model_posterior_paper()
@@ -129,5 +130,5 @@ plt.grid(True)  # Add grid lines
 
 
 plt.tight_layout()
-plt.savefig('Updated_Tid3_2ndCPT005.png', dpi=400)
+plt.savefig('Updated_Tid3_2nd_2.png', dpi=400)
 plt.show()
