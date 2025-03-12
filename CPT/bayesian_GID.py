@@ -30,11 +30,10 @@ vs30_geo_id_df = df.copy()
 vs30_geo_id_df = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] != 255]  # remove 255 = ID_NODATA
 vs30_geo_id_df = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] != 0]  # remove 0 = Water
 
-
 means = []
 errors = []
 counts = []
-for i, (gid, gid_name) in geo_ids.items():
+for i, (gid, gid_name) in enumerate(geo_ids.items()):
     print(gid, gid_name)
     count = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] == i].Vs30.count()
     vs30_mean = vs30_geo_id_df.loc[vs30_geo_id_df['gid'] == i].Vs30.mean()
@@ -69,7 +68,6 @@ yerr = [means_minus_1std_new, means_plus_1std_new]
 
 median_vs30 = np.median(new_posterior[:, 0])
 
-
 plt.figure(figsize=(7, 6))
 scatter_label = 'Updated Vs30 Data \n (Uncertainty- Purple:0.1, Blue:0.2, Yellow:0.5)'
 color_map = {0.1: 'purple', 0.2: 'blue', 0.5: 'yellow'}
@@ -79,8 +77,8 @@ for i, (gid, gid_name) in enumerate(geo_ids.items()):
     random_offsets = np.random.rand(len(subset)) * 0.3
     x_values = i + random_offsets
 
-    # Map uncertainty values to colors
-    colors = subset['uncertainty'].map(color_map)
+    # Map uncertainty values to colors and handle NaN values
+    colors = subset['uncertainty'].map(color_map).fillna('gray')
 
     # Plot q == 5 first
     subset_q5 = subset[subset['q'] == 5]
@@ -93,41 +91,38 @@ for i, (gid, gid_name) in enumerate(geo_ids.items()):
     scatter_not_q5 = plt.scatter(x_values_not_q5, subset_not_q5['vs30'], c=colors[subset['q'] != 5], s=50, edgecolor='k', alpha=0.6)
 
     #plt.text(i, 1800, str(counts[i]), ha='center', fontsize=10, color='black')
+
 posterior = model_geology.model_posterior_paper()
+print(posterior)
 posterior_means = posterior.T[0]
 means_plus_1std = posterior_means * (np.exp(posterior.T[1]) - 1)
 means_minus_1std = posterior_means * (1 - np.exp(-posterior.T[1]))
 yerr2 = [means_minus_1std, means_plus_1std]
 plt.errorbar(np.arange(len(posterior_means)) - 0.2, posterior_means, yerr=yerr2, fmt='o', capsize=5, label='Median ± 1 std (Foster et al. (2019))', color='blue')
-print(posterior_means)
 
 # Plot the median values for new_posterior
-plt.errorbar(np.arange(len(new_posterior_means))+0.2, new_posterior_means, yerr=yerr, fmt='o', capsize=5, label='Median ± 1 std (Updated Dataset)', color='r')
+plt.errorbar(np.arange(len(new_posterior_means)) + 0.2, new_posterior_means, yerr=yerr, fmt='o', capsize=5, label='Median ± 1 std (Updated Dataset)', color='r')
 
 posterior = model_geology.model_prior()
-print(posterior)
 posterior_means = posterior.T[0]
 
 means_plus_1std = posterior_means * (np.exp(posterior.T[1]) - 1)
 means_minus_1std = posterior_means * (1 - np.exp(-posterior.T[1]))
 yerr2 = [means_minus_1std, means_plus_1std]
-#plt.errorbar(np.arange(len(posterior_means))-0.3, posterior_means, yerr=yerr2, fmt='o', capsize=5, label='Median ± 1 std (Prior)', color='green')
 
-#plt.title('Comparison of Mean ±1 std of vs30 grouped by gid')
 plt.xlabel('gid', fontsize=13)
 plt.ylabel(r'$V_{s30} [m/s]$', fontsize=13)
 xtick_labels = ['G01', 'G04', 'G05', 'G06', 'G08', 'G09', 'G10', 'G11', 'G12', 'G13', 'G14', 'G15', 'G16', 'G17', 'G18']
-print(np.exp(6.3))
-plt.xticks(ticks=np.arange(len(new_posterior_means))+0.2, labels=xtick_labels, fontsize=13, rotation=45)  # Rotate x-ticks by 90 degrees
+
+plt.xticks(ticks=np.arange(len(new_posterior_means)) + 0.2, labels=xtick_labels, fontsize=13, rotation=45)  # Rotate x-ticks by 90 degrees
 plt.legend()
 plt.yscale('log')
-plt.ylim(0,1700)
+plt.ylim(0, 1700)
 plt.yticks([200, 400, 600, 800, 1000, 1200, 1400, 1600], fontsize=13)
 current_values = plt.gca().get_yticks()
 plt.gca().set_yticklabels(['{:.0f}'.format(x) for x in current_values])
-print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 plt.tight_layout()
-plt.savefig('Updated_Gid3_2nd_2.png',dpi=400)
+plt.savefig('Updated_Gid3_2nd_2.png', dpi=400)
 plt.show()

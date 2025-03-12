@@ -48,27 +48,19 @@ prior_means = prior.T[0]
 prior_errors = prior.T[1] * prior_means
 
 posterior = model_terrain.model_prior()
-print(posterior)
 posterior_means = posterior.T[0]
 
 means_plus_1std = posterior_means * (np.exp(posterior.T[1]) - 1)
 means_minus_1std = posterior_means * (1 - np.exp(-posterior.T[1]))
 yerr2 = [means_minus_1std, means_plus_1std]
-print(means_plus_1std)
-print(means_minus_1std)
-print(yerr2)
+
 
 vs30_terrain_id_df = vs30_terrain_id_df.rename(columns={"NZTM_X": "easting", "NZTM_Y": "northing", "Vs30": "vs30"})
 new_posterior = model_3.posterior(posterior, vs30_terrain_id_df, "tid")
 new_posterior_means = new_posterior.T[0]
-new_posterior_errors = new_posterior.T[1] * new_posterior_means
-upper_new_posterior_errors = new_posterior_errors + new_posterior_means
-lower_new_posterior_errors = new_posterior_means - new_posterior_errors
-
-# Correctly calculate the error bars
-means_plus_1std2 = new_posterior_means * (np.exp(new_posterior.T[1]) - 1)
-means_minus_1std2 = new_posterior_means * (1 - np.exp(-new_posterior.T[1]))
-yerr = [means_minus_1std2, means_plus_1std2]
+means_plus_1std_new = new_posterior_means * (np.exp(new_posterior.T[1]) - 1)
+means_minus_1std_new = new_posterior_means * (1 - np.exp(-new_posterior.T[1]))
+yerr = [means_minus_1std_new, means_plus_1std_new]
 
 median_vs30 = np.median(new_posterior[:, 0])
 
@@ -83,7 +75,7 @@ for i, (tid, tid_name) in enumerate(terrain_ids.items()):
     x_values = i + random_offsets
 
     # Map uncertainty values to colors
-    colors = subset['uncertainty'].map(color_map)
+    colors = subset['uncertainty'].map(color_map).fillna('gray')
 
     # Plot q == 5 first
     subset_q5 = subset[subset['q'] == 5]
@@ -97,6 +89,7 @@ for i, (tid, tid_name) in enumerate(terrain_ids.items()):
 
 
 posterior = model_terrain.model_posterior_paper()
+print(posterior)
 posterior_means = posterior.T[0]
 means_plus_1std = posterior_means * (np.exp(posterior.T[1]) - 1)
 means_minus_1std = posterior_means * (1 - np.exp(-posterior.T[1]))
@@ -124,11 +117,9 @@ plt.yscale('log')
 plt.yticks([200, 400, 600, 800, 1000, 1200, 1400, 1600], fontsize=13)
 current_values = plt.gca().get_yticks()
 plt.gca().set_yticklabels(['{:.0f}'.format(x) for x in current_values])
-print(posterior)
 print(new_posterior)
 plt.grid(True)  # Add grid lines
 
-
 plt.tight_layout()
-plt.savefig('Updated_Tid3_2nd_2.png', dpi=400)
+plt.savefig('Updated_Tid3_2nd_CPT05.png', dpi=400)
 plt.show()
