@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from skgstat import Variogram
-from skgstat.binning import even_width_lags
 from skgstat.binning import uniform_count_lags
 
 # Load the data
@@ -26,13 +25,13 @@ models = ['spherical', 'exponential', 'gaussian', 'matern', 'stable', 'cubic']
 print("Plotting variograms with different models...")
 
 for model in models:
-    V = Variogram(coordinates, res, n_lags=100, model=model, normalize=False, bin_func=uniform_count_lags)
-    V.fit()
+    V = Variogram(coordinates, res, n_lags=60, model=model, normalize=False, bin_func=uniform_count_lags)
+    #V.fit()  # Fit the model with the new nugget
 
     plt.figure(figsize=(8, 6))
     V.plot(hist=True, show=False)
     #plt.ylim(0.0, max(V.experimental))
     plt.title(f'Model: {model}\nRMSE: {V.rmse:.2f}')
     print(f"Model: {model}", f"Model parameters: {V.parameters}", f"RMSE: {V.rmse}")
-    plt.savefig(f'variogram_uniformcounts_{model}.png', dpi=600)
+    plt.savefig(f'variogram_uniformcount_{model}.png', dpi=600)
     plt.show()
