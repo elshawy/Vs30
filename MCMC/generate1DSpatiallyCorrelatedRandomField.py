@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+from vs_calc import VsProfile, vs30_correlations
 def generate_spatially_correlated_field(depths, num_realizations, correlation_length, mean=0, std_dev=45):
     """
     Generates spatially correlated 1D random fields using Cholesky decomposition.
@@ -33,7 +33,7 @@ def generate_spatially_correlated_field(depths, num_realizations, correlation_le
     return correlated_fields
 
 # Define depth range
-depths = np.linspace(0, 30, 3001)  # Depths from 0 to 30m with 1m increments
+depths = np.linspace(0, 30, 3001)  # Depths from 0 to 30m with 0.01m increments
 print(depths)
 
 # Generate 100 realizations
@@ -59,13 +59,6 @@ for i in range(1, random_fields.shape[0]):
 merged_data = merged_data.drop(columns=merged_data.filter(like='Random_Field_').columns)
 print(merged_data)
 
-# Calculate the standard deviation at each depth for the original data within merged_data
-std_values = merged_data.drop(columns=['Depth']).std(axis=1)
-
-print("Standard deviation at each depth:")
-print(std_values)
-
-
 # Calculate the minimum and maximum values for all columns except 'Depth'
 min_values = merged_data.drop(columns=['Depth']).min(axis=1)
 max_values = merged_data.drop(columns=['Depth']).max(axis=1)
@@ -73,17 +66,13 @@ max_values = merged_data.drop(columns=['Depth']).max(axis=1)
 # Create new arrays for minimum and maximum values
 min_array = np.column_stack((merged_data['Depth'], min_values))
 max_array = np.column_stack((merged_data['Depth'], max_values))
-
-print("Minimum values array:")
-print(min_array)
-print("Maximum values array:")
-print(max_array)
 data_origin = pd.read_csv('SCPT_195188.csv', usecols=['Depth', 'Andrus-P Vs'])
 
-# Plot the minimum and maximum values
 plt.figure(figsize=(6, 10))
 plt.plot(min_array[:, 1], min_array[:, 0], color='grey', linestyle='--', label='Minimum Values')
 plt.plot(max_array[:, 1], max_array[:, 0], color='grey',linestyle='--', label='Maximum Values')
+
+# Plot the minimum and maximum values
 plt.plot(data_origin['Andrus-P Vs'], data_origin['Depth'], color='red', label='Original Data')
 plt.xlabel('Andrus-P Vs')
 plt.ylabel('Depth (m)')
@@ -92,3 +81,7 @@ plt.gca().invert_yaxis()  # Invert y-axis to match depth convention
 plt.legend()
 plt.savefig('min_max_values_plot.png')
 plt.show()
+plt.close()
+
+
+
