@@ -1,5 +1,7 @@
 import numpy as np
+import os
 import pandas as pd
+from pathlib import Path
 import matplotlib.pyplot as plt
 from vs_calc import VsProfile, vs30_correlations
 def generate_spatially_correlated_field(depths, num_realizations, correlation_length, mean=0, std_dev=45):
@@ -41,7 +43,8 @@ random_fields = generate_spatially_correlated_field(depths, num_realizations=100
 print(random_fields)
 
 # Load the 'Depth' and 'Andrus-P Vs' columns from the CSV file
-data = pd.read_csv('SCPT_195188.csv', usecols=['Depth', 'Andrus-P Vs'])
+filename = 'SCPT_195188.csv'
+data = pd.read_csv(filename, usecols=['Depth', 'Andrus-P Vs'])
 
 # Interpolate the random fields to match the depths in the CSV file
 matched_random_fields = np.array([np.interp(data['Depth'], depths, random_fields[i, :]) for i in range(random_fields.shape[0])]).T
@@ -82,6 +85,56 @@ plt.legend()
 plt.savefig('min_max_values_plot.png')
 plt.show()
 plt.close()
+# Directory to save CSV files
+save_path = f'vs_profiles for {filename}'
+os.makedirs(save_path, exist_ok=True)
+
+# Loop to save Depth and Vs pairs into separate CSV files
+for col in merged_data.columns:
+    if col != 'Depth':
+        output_df = merged_data[['Depth', col]]
+        output_df.columns = ['d', 'vs']
+        output_df.to_csv(os.path.join(save_path, f'depth_vs_{col}.csv'), index=False)
+        print(f'Saved {os.path.join(save_path, f"depth_vs_{col}.csv")}')
 
 
+examples_dir = Path(save_path)
+import os
 
+# Remove the existing file if it exists
+result_file_path = examples_dir / 'vsz_estimation.csv'
+#result_file_path = examples_dir / 'vs30_estimation.csv'
+if os.path.exists(result_file_path):
+    os.remove(result_file_path)
+
+for file_path in examples_dir.glob('*.csv'):
+    file_name = file_path.stem
+    try:
+        # Create VsProfile objects from the CPT file
+        vs_profile = VsProfile.from_file2(file_path, file_name)
+        vsz = vs_profile.calc_vsz()
+        #vs30 = vs30_correlations.boore_2004(vs_profile)[0]
+
+    except Exception as e:
+        print(f"Error processing {file_name}: {e}")
+        continue
+
+    with open(result_file_path, 'a') as output_file:
+        output_file.write(f"{file_name},{vsz}\n")
+        #output_file.write(f"{file_name},{vs30}\n")
+
+# Load the Vs30 values from the CSV file
+vsz_data = pd.read_csv(f'vs_profiles for {filename}/vsz_estimation.csv', header=None, names=['File', 'Vsz'])
+plt.hist(vsz_data['Vsz'], bins=30)
+std = np.log(vsz_data['Vsz']).std()
+plt.text(0.5, 0.5, f"Standard Deviation of Vsz values: {std}", horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
+print(f"Standard Deviation of Vsz values: {std}")
+
+plt.xlabel('Vsz (m/s)')
+plt.ylabel('Counts')
+plt.title('Vsz Histogram')
+plt.savefig('vsz_histogram.png')
+
+#vs30_data = pd.read_csv(f'vs_profiles for {filename}/vs30_estimation.csv', header=None, names=['File', 'Vs30'])
+#std = np.log(vs30_data['Vs30']).std()
+#print(f"Standard Deviation of Vs30 values: {std}")

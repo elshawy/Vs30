@@ -137,6 +137,18 @@ class VsProfile:
        		 None,
        		 None,
        		 layered)
+       		 
+    def from_file2(file_name: str, name: str):
+        file_name= Path(file_name)
+        file_data =pd.read_csv(file_name,sep = ',')
+    
+        return VsProfile(
+       		 name,
+       		 np.asarray(file_data["vs"]),
+       		 np.asarray(file_data["vs"]),
+       		 np.asarray(file_data["d"]),
+       		 None,
+       		 None)
 
     @staticmethod
     def from_json(json: Dict):
