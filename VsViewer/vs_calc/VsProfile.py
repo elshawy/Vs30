@@ -17,8 +17,7 @@ class VsProfile:
     """
     Contains the data for a Vs Profile
     """
-    
-    
+
     def __init__(
         self,
         name: str,
@@ -26,12 +25,17 @@ class VsProfile:
         vs_sd: np.ndarray,
         depth: np.ndarray,
         vs_correlation: str = None,
-        vs30_correlations: str = None,
+        vs30_correlation: str = None,
         layered: bool = False,
     ):
+        # Filter out rows where depth is 0
+        valid_indices = depth != 0
+        vs = vs[valid_indices]
+        vs_sd = vs_sd[valid_indices]
+        depth = depth[valid_indices]    
         self.name = name
         self.vs_correlation = vs_correlation
-        self.vs30_correlations = vs30_correlations
+        self.vs30_correlation = vs30_correlation
         self.layered = layered
         # Ensures that the VsZ calculation will be done using the highest int depth below 30m
         # for correlations to Vs30
@@ -90,18 +94,6 @@ class VsProfile:
             None,
             layered
         )
-    def from_file(file_name: str, name: str,layered = bool):
-        file_name= Path(file_name)
-        file_data =pd.read_csv(file_name,sep = ',')
-    
-        return VsProfile(
-       		 name,
-       		 np.asarray(file_data["Vs"]),
-       		 np.asarray(file_data["Vs_SD"]),
-       		 np.asarray(file_data["Depth"]),
-       		 None,
-       		 None,
-       		 layered)
 
     @staticmethod
     def from_cpt(cpt: CPT, correlation: str):
@@ -132,6 +124,19 @@ class VsProfile:
         return VsProfile(
             spt.name, vs.squeeze(), vs_sd.squeeze(), depth, correlation, None
         )
+        
+    def from_file(file_name: str, name: str,layered = bool):
+        file_name= Path(file_name)
+        file_data =pd.read_csv(file_name,sep = ',')
+    
+        return VsProfile(
+       		 name,
+       		 np.asarray(file_data["vs"]),
+       		 np.asarray(file_data["vs"]),
+       		 np.asarray(file_data["d"]),
+       		 None,
+       		 None,
+       		 layered)
 
     @staticmethod
     def from_json(json: Dict):
@@ -144,7 +149,7 @@ class VsProfile:
             np.asarray(json["vs_sd"]),
             np.asarray(json["depth"]),
             None if json["vs_correlation"] == "" else json["vs_correlation"],
-            None if json["vs30_correlations"] == "" else json["vs30_correlations"],
+            None if json["vs30_correlation"] == "" else json["vs30_correlation"],
             json["layered"] == "True",
         )
 
@@ -155,7 +160,7 @@ class VsProfile:
         return {
             "name": self.name,
             "vs_correlation": self.vs_correlation,
-            "vs30_correlations": self.vs30_correlations,
+            "vs30_correlation": self.vs30_correlation,
             "layered": str(self.layered),
             "max_depth": self.max_depth,
             "vs": self.vs.tolist(),
@@ -208,12 +213,23 @@ class VsProfile:
         """
         Calculates the average Vs at the max Z depth for the given VsProfile
         """
-        vs_midpoint, depth_midpoint = convert_to_midpoint(self.vs, self.depth)
+        vs_midpoint, depth_midpoint = convert_to_midpoint(self.vs, self.depth, self.layered)
         time = 0
         for ix in range(1, len(vs_midpoint), 2):
             change_in_z = depth_midpoint[ix] - depth_midpoint[ix - 1]
             time += change_in_z / vs_midpoint[ix]
         return self.max_depth / time
+
+#    def calc_vsz(self):
+#        """
+#        Calculates the average Vs at the max Z depth for the given VsProfile
+#        """
+#        vs, depth =(self.vs, self.depth)
+#        time = 0
+#        for ix in range(1, len(vs), 2):
+#            change_in_z = depth[ix] - depth[ix - 1]
+#            time += change_in_z / vs[ix]
+#        return self.max_depth / time
 
     def calc_vs30(self):
         """
@@ -224,9 +240,9 @@ class VsProfile:
             # Set Vs30 to VsZ as Z is 30
             vs30, vs30_sd = self.vsz, 0
         else:
-            if self.vs30_correlations not in VS30_CORRELATIONS.keys():
+            if self.vs30_correlation not in VS30_CORRELATIONS.keys():
                 raise KeyError(
-                    f"{self.vs30_correlations} not found in set of correlations {VS30_CORRELATIONS.keys()}"
+                    f"{self.vs30_correlation} not found in set of correlations {VS30_CORRELATIONS.keys()}"
                 )
-            vs30, vs30_sd = VS30_CORRELATIONS[self.vs30_correlations](self)
+            vs30, vs30_sd = VS30_CORRELATIONS[self.vs30_correlation](self)
         return vs30, vs30_sd

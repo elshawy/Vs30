@@ -2,7 +2,7 @@ import numpy as np
 
 from .CPT import CPT
 
-
+#A
 def mcgann_2015(cpt: CPT):
     """
     CPT-Vs correlation developed by McGann et al. (2015b).
@@ -44,17 +44,29 @@ def mcgann_2018(cpt: CPT):
 
     return VsMcGann2, Vs_SD
 
-
 def andrus_2007(cpt: CPT):
     """
-    CPT-Vs correlation developed by Andrus et al. (2007).
+    CPT-Vs correlation developed by Andrus et al. (2007). Holocene
     qt in kPa
     """
     # Holocene-Age Soils, where ASF = 1
     cpt.qt[cpt.qt <= 0] = 0.0001  # adjust for possible negative qt
-    VsAnd = np.array(
-        [2.27 * ((cpt.qt * 1000) ** 0.412) * (cpt.Ic**0.989) * (cpt.depth**0.033)]
-    ).T
+    VsAnd = np.array([2.62 * ((cpt.qt * 1000) ** 0.395) * (cpt.Ic**0.912) * (cpt.depth**0.124)*0.92]).T
+    # residual standard deviation: suggests that 68% of the data fall within 24m/s.
+    Vs_SD = np.log(24 / VsAnd + 1)
+    # Manages when there is a 0 depth in the CPT
+    Vs_SD[Vs_SD == np.inf] = 0
+    return VsAnd, Vs_SD
+    
+def andrus_2007_2(cpt: CPT):
+    """
+    CPT-Vs correlation developed by Andrus et al. (2007). Pleistocene
+    qt in kPa
+    """
+    # Pleistocene-Age Soils, where ASF = 1
+    cpt.qt[cpt.qt <= 0] = 0.0001  # adjust for possible negative qt
+    VsAnd = np.array([2.62 * ((cpt.qt * 1000) ** 0.395) * (cpt.Ic**0.912) * (cpt.depth**0.124)*1.12]).T
+
     # residual standard deviation: suggests that 68% of the data fall within 24m/s.
     Vs_SD = np.log(24 / VsAnd + 1)
     # Manages when there is a 0 depth in the CPT
@@ -91,6 +103,7 @@ def hegazy_2006(cpt: CPT):
 
 CPT_CORRELATIONS = {
     "andrus_2007": andrus_2007,
+    "andrus_2007_2" : andrus_2007_2,
     "robertson_2009": robertson_2009,
     "hegazy_2006": hegazy_2006,
     "mcgann_2015": mcgann_2015,

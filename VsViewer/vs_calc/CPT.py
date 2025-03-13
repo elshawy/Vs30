@@ -175,7 +175,10 @@ class CPT:
         Creates a CPT from a CPT file
         """
         cpt_ffp = Path(cpt_ffp)
-        data = np.loadtxt(cpt_ffp, dtype=float, delimiter=",", skiprows=1)
+        data = np.loadtxt(cpt_ffp, dtype=str, delimiter=",", skiprows=1)
+        data[data == ''] = np.nan
+        data = data.astype(float)
+        data = np.nan_to_num(data, nan=0.0)
         depth, qc, fs, u, info = CPT.process_cpt(data)
         return CPT(cpt_ffp.stem, depth, qc, fs, u, info)
 
