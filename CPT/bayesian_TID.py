@@ -23,7 +23,7 @@ terrain_ids = {
     16: ("T16", "T16"),
 }
 
-df = pd.read_csv('measured_sites.csv')
+df = pd.read_csv('measured_sites_CPT.csv')
 print(df)
 
 vs30_terrain_id_df = df.copy()
@@ -121,5 +121,5 @@ print(new_posterior)
 plt.grid(True)  # Add grid lines
 
 plt.tight_layout()
-plt.savefig('Updated_Tid3_2nd_CPT05.png', dpi=400)
+plt.savefig('Updated_Tid3_2nd_CPTte.png', dpi=400)
 plt.show()
