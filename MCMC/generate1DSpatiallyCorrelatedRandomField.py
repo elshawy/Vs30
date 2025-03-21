@@ -39,7 +39,7 @@ depths = np.linspace(0, 30, 3001)  # Depths from 0 to 30m with 0.01m increments
 print(depths)
 
 # Generate 100 realizations
-random_fields = generate_spatially_correlated_field(depths, num_realizations=100, correlation_length=250)
+random_fields = generate_spatially_correlated_field(depths, num_realizations=500, correlation_length=250)
 print(random_fields)
 
 # Load the 'Depth' and 'Andrus-P Vs' columns from the CSV file
@@ -111,7 +111,7 @@ for file_path in examples_dir.glob('*.csv'):
     file_name = file_path.stem
     try:
         # Create VsProfile objects from the CPT file
-        vs_profile = VsProfile.from_file2(file_path, file_name)
+        vs_profile = VsProfile.from_file(file_path, file_name, layered=False)
         vsz = vs_profile.calc_vsz()
         #vs30 = vs30_correlations.boore_2004(vs_profile)[0]
 

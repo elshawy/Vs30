@@ -7,12 +7,12 @@ from skgstat.binning import uniform_count_lags
 
 # Load the data
 print("Loading data...")
-data = pd.read_csv('Stacking_results_ANDMC1518_RES.csv')
+data = pd.read_csv('Stacking_result_SCPTSDMT.csv')
 
 # Extract the 'depth_input' and 'RES' columns
 print("Extracting coordinates and values...")
 depth = data['depth_input'].values
-res = data['RES'].values
+res = data['Combined_Vs_res'].values
 
 # Create a spatial field
 print("Creating spatial field...")
@@ -26,7 +26,7 @@ models = [10, 20, 30, 40, 50, 60,70, 80, 90, 100]
 print("Plotting variograms with different models...")
 
 for model in models:
-    V = Variogram(coordinates, res, n_lags=model, model='exponential', normalize=False, bin_func=uniform_count_lags)
+    V = Variogram(coordinates, res, n_lags=model, model='exponential', normalize=False, bin_func=even_width_lags)
 
     plt.figure(figsize=(8, 6))
     lags = V.bins

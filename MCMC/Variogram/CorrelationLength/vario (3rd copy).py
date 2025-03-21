@@ -5,12 +5,12 @@ from pykrige.ok import OrdinaryKriging
 
 # Load the data
 print("Loading data...")
-data = pd.read_csv('Stacking_results_ANDMC1518_RES.csv')
+data = pd.read_csv('Stacking_result_SCPTSDMT.csv')
 
 # Extract the 'depth_input' and 'RES' columns
 print("Extracting coordinates and values...")
 depth = data['depth_input'].values
-res = data['RES'].values
+res = data['Combined_Vs_res'].values
 
 # Create a spatial field
 print("Creating spatial field...")
@@ -37,9 +37,10 @@ semivariance = OK.semivariance
 # Plot the variogram
 fig, ax = plt.subplots()
 ax.scatter(lags, semivariance, marker='*', color='red', s=30)
-ax.set_xlim(0, 10)  # Set the x-axis limits
-ax.set_ylim(0.08, 0.12)  # Set the y-axis limits
+#ax.set_xlim(0, 10)  # Set the x-axis limits
+#ax.set_ylim(0.08, 0.12)  # Set the y-axis limits
 ax.set_xlabel('Lag')
 ax.set_ylabel('Semivariance')
 ax.set_title('Variogram')
+plt.savefig('Variogram.png')
 plt.show()
