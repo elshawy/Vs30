@@ -1,6 +1,7 @@
 """
 Loads measured sites.
 """
+
 from math import sqrt
 import os
 
@@ -11,7 +12,7 @@ from scipy.spatial import distance_matrix
 
 data = os.path.join(os.path.dirname(__file__), "data")
 DATA_CPT = os.path.join(data, "cptvs30.ssv")
-DATA_KAISERETAL = os.path.join(data, "geonet_site_metadata_summary_v1.4_working.csv")
+DATA_KAISERETAL = os.path.join(data, "20170817_vs_allNZ_duplicatesCulled.ll")
 DATA_MCGANN = os.path.join(data, "McGann_cptVs30data.csv")
 DATA_WOTHERSPOON = os.path.join(data, "Characterised Vs30 Canterbury_June2017_KFed.csv")
 
@@ -25,7 +26,7 @@ def downsample_mcg(sites_df, res=1000):
     res: grid resolution (m)
     """
 
-    max_dist = sqrt(res ** 2 * 2) / 2
+    max_dist = sqrt(res**2 * 2) / 2
     x = sites_df["easting"].values
     y = sites_df["northing"].values
 
@@ -77,9 +78,13 @@ def load_vs(source="original"):
         kaiseretal = load_kaiseretal_vs()
 
         # remove Kaiser Q3 unless station name is 3 chars long (broadband seismometers)
+#        kaiseretal = kaiseretal[
+#            (kaiseretal.q != 3) | (kaiseretal.station.str.len() == 3)
+#        ]
         kaiseretal = kaiseretal[
-            (kaiseretal.q != 3) | (kaiseretal.station.str.len() == 3)
+            (kaiseretal.q != 3) 
         ]
+
 
         return pd.concat([mcgann, wotherspoon, kaiseretal], ignore_index=True)
 
@@ -160,20 +165,19 @@ def load_wotherspoon_vs():
 
 def load_kaiseretal_vs():
     """
-    Values from NSHM site database (Wotherspoon et al. (2021))
+    Values from Kaiser et al. (2017)
     """
 
     # with removed duplicate points
     kaiseretal = pd.read_csv(
         DATA_KAISERETAL,
-        usecols=[0, 1, 2, 5, 7],
-        names=["station", "northing", "easting", "vs30", "q"],
-        skiprows=1,
+        usecols=[0, 1, 2, 3, 4],
+        names=["station", "easting", "northing", "vs30", "q"],
+        skiprows=5,
         engine="c",
         dtype={"easting": np.float32, "northing": np.float32, "vs30": np.float32},
-        converters={"q": lambda text: int(text.split('Q')[1]), "station": str.strip},
+        converters={"q": lambda text: int(text.strip()[2]), "station": str.strip},
     )
-
     kaiseretal["easting"], kaiseretal["northing"] = wgs2nztm.transform(
         kaiseretal["easting"].values, kaiseretal["northing"].values
     )

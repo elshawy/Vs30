@@ -10,12 +10,13 @@ from pyproj import Transformer
 from scipy.spatial import distance_matrix
 
 data = os.path.join(os.path.dirname(__file__), "data")
+CleanedUp = os.path.join(os.path.dirname(__file__), "CleanedUp")
 DATA_CPT = os.path.join(data, "cptvs30_v25.ssv")
 #DATA_KAISERETAL = os.path.join(data, "20170817_vs_allNZ_duplicatesCulled.ll")
 #DATA_KAISERETAL = os.path.join(data, "Geonet Site Metadata Summary_v1.4_working.csv")
-DATA_KAISERETAL = os.path.join(data, "Geonet Metadata Summary_v1.4_NZGDKAISERover15.csv")
-DATA_MCGANN = os.path.join(data, "McGann_cptVs30data.csv")
-DATA_WOTHERSPOON = os.path.join(data, "Characterised Vs30 Canterbury_June2017_KFed_processed_2.csv")
+DATA_KAISERETAL = os.path.join(CleanedUp, "Geonet Metadata Summary_v1.4.csv")
+DATA_MCGANN = os.path.join(CleanedUp, "Updated_cptVs30data.csv")
+DATA_WOTHERSPOON = os.path.join(CleanedUp, "Measured_Vs30data.csv")
 
 wgs2nztm = Transformer.from_crs(4326, 2193, always_xy=True)
 nzmg2nztm = Transformer.from_crs(27200, 2193, always_xy=True)
@@ -113,7 +114,7 @@ def load_cpt_vs():
     return cpt
 
 
-def load_mcgann_vs(downsample=True):
+def load_mcgann_vs(downsample=False):
     """
     McGann Vs30 map
     (McGann, submitted, 2016 SDEE
@@ -123,19 +124,13 @@ def load_mcgann_vs(downsample=True):
     # downsampling was originally done on the NZMG grid
     mcgann = pd.read_csv(
         DATA_MCGANN,
-        usecols=[3, 4, 7] if downsample else [5, 6, 7],
-        names=["easting", "northing", "vs30"],
+        usecols=[1, 2, 3, 4, 5],
+        names=["easting", "northing", "vs30", "uncertainty", "q" ],
         skiprows=1,
         engine="c",
         dtype=np.float32,
     )
-    if downsample:
-        mcgann = downsample_mcg(mcgann)
-        mcgann["easting"], mcgann["northing"] = nzmg2nztm.transform(
-            mcgann["easting"].values, mcgann["northing"].values
-        )
 
-    mcgann["uncertainty"] = np.float32(0.2)
 
     return mcgann
 
@@ -148,8 +143,8 @@ def load_wotherspoon_vs():
     wotherspoon = pd.read_csv(
         DATA_WOTHERSPOON,
         sep=",",
-        usecols=[2, 3, 4],
-        names=["northing", "easting", "vs30"],
+        usecols=[2, 3, 4, 5],
+        names=["northing", "easting", "vs30", "q"],
         skiprows=1,
         engine="c",
         dtype=np.float32,
@@ -158,8 +153,9 @@ def load_wotherspoon_vs():
         wotherspoon["easting"].values, wotherspoon["northing"].values
     )
 
-    wotherspoon["uncertainty"] = np.float32(0.2)
-
+    wotherspoon["uncertainty"] = np.where(
+        wotherspoon["q"] == 3, 0.5, wotherspoon["q"] / 10
+    )
     return wotherspoon
 
 

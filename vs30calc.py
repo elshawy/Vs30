@@ -14,6 +14,10 @@ from time import time
 import numpy as np
 import pandas as pd
 from pyproj import Transformer
+os.environ['PROJ_LIB'] = 'home/jki140/miniforge3/envs/Vs30/share/proj'
+os.environ['GDAL_DATA'] = 'home/jki140/miniforge3/envs/Vs30/share/gdal'
+
+
 
 from vs30 import (
     model,
@@ -30,6 +34,7 @@ SPLIT_SIZE = 50
 MODEL_MAPPING = {"geology": model_geology, "terrain": model_terrain}
 wgs2nztm = Transformer.from_crs(4326, 2193, always_xy=True)
 p_paths, p_sites, p_grid, p_ll, p_geol, p_terr, p_comb, nproc = params.load_args()
+pool = Pool(nproc)
 
 # working directory/output setup
 if os.path.exists(p_paths.out):
@@ -82,10 +87,9 @@ for model_setup in [p_geol, p_terr]:
     model_module = MODEL_MAPPING[model_setup.name]
 
     print("    model measured update...")
-    with Pool(nproc) as pool:
-        sites[f"{model_setup.letter}id"] = np.concatenate(
-            pool.map(model_module.model_id, array_split(sites_points))
-        )
+    sites[f"{model_setup.letter}id"] = np.concatenate(
+        pool.map(model_module.model_id, array_split(sites_points))
+    )
     if model_setup.update == "prior":
         model_table = model_module.model_prior()
     elif model_setup.update == "posterior_paper":
@@ -113,10 +117,9 @@ for model_setup in [p_geol, p_terr]:
 
     if p_ll is not None:
         print("    model points...")
-        with Pool(nproc) as pool:
-            table[f"{model_setup.letter}id"] = np.concatenate(
-                pool.map(model_module.model_id, array_split(table_points))
-            )
+        table[f"{model_setup.letter}id"] = np.concatenate(
+            pool.map(model_module.model_id, array_split(table_points))
+        )
         (
             table[f"{model_setup.name}_vs30"],
             table[f"{model_setup.name}_stdv"],
@@ -129,16 +132,15 @@ for model_setup in [p_geol, p_terr]:
             grid=p_grid,
         ).T
         print("    measured mvn...")
-        with Pool(nproc) as pool:
-            (
-                table[f"{model_setup.name}_mvn_vs30"],
-                table[f"{model_setup.name}_mvn_stdv"],
-            ) = np.concatenate(
-                pool.map(
-                    partial(mvn.mvn_table, sites=sites, model_name=model_setup.name),
-                    array_split(table),
-                )
-            ).T
+        (
+            table[f"{model_setup.name}_mvn_vs30"],
+            table[f"{model_setup.name}_mvn_stdv"],
+        ) = np.concatenate(
+            pool.map(
+                partial(mvn.mvn_table, sites=sites, model_name=model_setup.name),
+                array_split(table),
+            )
+        ).T
     else:
         print("    model map...")
         tiffs.append(
@@ -155,7 +157,7 @@ if p_geol.update != "off" and p_terr.update != "off":
     t = time()
     if p_ll is not None:
         for prefix in ["", "mvn_"]:
-            table[f"{prefix}vs30"], table[f"{prefix}stdv"] = model.combine_models(
+            table[f"{prefix}vs30"], table[f"{prefix}stdv"] = model_Origin.combine_models(
                 p_comb,
                 table[f"geology_{prefix}vs30"],
                 table[f"geology_{prefix}stdv"],
@@ -166,6 +168,8 @@ if p_geol.update != "off" and p_terr.update != "off":
         model.combine_tiff(p_paths.out, "combined.tif", p_grid, p_comb, *tiffs)
         model.combine_tiff(p_paths.out, "combined_mvn.tif", p_grid, p_comb, *tiffs_mvn)
     print(f"{time()-t:.2f}s")
+pool.close()
+pool.join()
 
 # save point based data and copy qgis project files
 sites.to_csv(os.path.join(p_paths.out, "measured_sites.csv"), na_rep="NA", index=False)

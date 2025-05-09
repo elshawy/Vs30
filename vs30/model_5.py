@@ -216,7 +216,7 @@ def posterior(model, sites, idcol, n_prior=3, min_sigma=0.5):
 
     # new model
     vs30 = model[:, 0]
-    stdv = np.maximum(model[:, 1], min_sigma)
+    stdv = model[:, 1]
 
     # loop through observed
     n0 = np.repeat(n_prior, len(model)).astype(float)

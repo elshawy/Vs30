@@ -5,28 +5,30 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from vs_calc import VsProfile, vs30_correlations
 
-def generate_spatially_correlated_field(depths, num_realizations, correlation_length, mean, std_dev):
+def generate_spatially_correlated_field(depths, num_realizations, correlation_length, mean=0, std_dev=0.3483):
     num_points = len(depths)
     correlation_matrix = np.exp(-np.abs(np.subtract.outer(depths, depths)) / correlation_length)
     L = np.linalg.cholesky(correlation_matrix)
     uncorrelated_random_fields = np.random.randn(num_realizations, num_points)
-    std_dev_ln = np.sqrt(np.log(1 + (std_dev / mean) ** 2))
-    correlated_fields_ln = std_dev_ln * (uncorrelated_random_fields @ L.T)
-    return correlated_fields_ln
+    correlated_fields = mean + std_dev * (uncorrelated_random_fields @ L.T)
+    return correlated_fields
 
+depths = np.linspace(0, 30, 3001)
+random_fields = generate_spatially_correlated_field(depths, num_realizations=1000, correlation_length=250)
 filename = 'SCPT_195188.csv'
 data = pd.read_csv(filename, usecols=['Depth', 'Andrus-P Vs'])
-depth_interval_csv = np.diff(data['Depth']).mean()
-depths = np.linspace(0, 30, 3001)
-mean_vs = np.interp(depths, data['Depth'], data['Andrus-P Vs'])
-random_fields_ln = generate_spatially_correlated_field(depths, num_realizations=1000, correlation_length=250, mean=mean_vs, std_dev=45)
-matched_random_fields_ln = np.array([np.interp(data['Depth'], depths, random_fields_ln[i, :]) for i in range(random_fields_ln.shape[0])]).T
-matched_data_ln = pd.DataFrame(matched_random_fields_ln, columns=[f'Random_Field_{i}' for i in range(random_fields_ln.shape[0])])
-matched_data_ln['Depth'] = data['Depth']
-merged_data = pd.merge(data, matched_data_ln, on='Depth')
+matched_random_fields = np.array(
+    [np.interp(data['Depth'], depths, random_fields[i, :]) for i in range(random_fields.shape[0])]).T
+matched_data = pd.DataFrame(matched_random_fields, columns=[f'Random_Field_{i}' for i in range(random_fields.shape[0])])
+matched_data['Depth'] = data['Depth']
+merged_data = pd.merge(data, matched_data, on='Depth')
 
-for i in range(random_fields_ln.shape[0]):
-    merged_data[f'Andrus-P Vs_{i}'] = merged_data['Andrus-P Vs'] * np.exp(merged_data[f'Random_Field_{i}'])
+new_columns = []
+for i in range(random_fields.shape[0]):
+    new_column = merged_data['Andrus-P Vs'] * np.exp(merged_data[f'Random_Field_{i}'])
+    new_columns.append(pd.Series(new_column, name=f'Andrus-P Vs_{i}'))
+
+merged_data = pd.concat([merged_data] + new_columns, axis=1)
 merged_data = merged_data.drop(columns=merged_data.filter(like='Random_Field_').columns)
 
 min_values = merged_data.drop(columns=['Depth']).min(axis=1)
@@ -44,8 +46,7 @@ plt.ylabel('Depth (m)')
 plt.title('Minimum and Maximum Values Plot')
 plt.gca().invert_yaxis()
 plt.legend()
-plt.xlim(0, 1000)
-plt.savefig('min_max_values_plot.png')
+plt.savefig('min_max_values_plot2.png')
 plt.show()
 plt.close()
 
@@ -79,10 +80,9 @@ for file_path in examples_dir.glob('*.csv'):
 vsz_data = pd.read_csv(f'vs_profiles for {filename}/vsz_estimation.csv', header=None, names=['File', 'Vsz'])
 plt.hist(vsz_data['Vsz'], bins=30)
 std = np.log(vsz_data['Vsz']).std()
-plt.text(0.5, 0.5, f"Standard Deviation of Vsz values: {std}", horizontalalignment='center', verticalalignment='center', transform=plt.gca().transAxes)
-print(f"Standard Deviation of Vsz values: {std}")
-
+plt.text(0.5, 0.5, f"Standard Deviation of Vsz values: {std}", horizontalalignment='center', verticalalignment='center',
+         transform=plt.gca().transAxes)
 plt.xlabel('Vsz (m/s)')
 plt.ylabel('Counts')
 plt.title('Vsz Histogram')
-plt.savefig('vsz_histogram.png')
+plt.savefig('vsz_histogram2.png')
